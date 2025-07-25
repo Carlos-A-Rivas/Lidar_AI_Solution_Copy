@@ -29,7 +29,7 @@ model = os.environ["DEBUG_MODEL"]
 precision = os.environ["DEBUG_PRECISION"]
 data  = os.environ["DEBUG_DATA"]
 
-image_names = ["0-image.jpg", "1-image.jpg"]
+image_names = ["0-image.jpg"]
 
 images = []
 for file in image_names:

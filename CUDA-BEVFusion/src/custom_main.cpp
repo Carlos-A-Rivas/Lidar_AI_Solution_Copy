@@ -39,10 +39,10 @@
 #include "common/visualize.hpp"
 
 static std::vector<unsigned char*> load_images(const std::string& root) {
-  const char* file_names[] = {"0-image.jpg", "1-image.jpg"};
+  const char* file_names[] = {"0-image.jpg"};
 
   std::vector<unsigned char*> images;
-  for (int i = 0; i < 2; ++i) {
+  for (int i = 0; i < 1; ++i) {
     char path[200];
     sprintf(path, "%s/%s", root.c_str(), file_names[i]);
 
@@ -109,8 +109,7 @@ static void visualize(const std::vector<bevfusion::head::transbbox::BoundingBox>
   int camera_width = 500;
   int camera_height = static_cast<float>(camera_width / (float)image_artist_param.image_width * image_artist_param.image_height);
   int offset_cameras[][3] = {
-      {-camera_width / 2, -content_height / 2 + gap, 0},
-      {content_width / 2 - camera_width - gap, -content_height / 2 + gap, 0}};
+      {-camera_width / 2, -content_height / 2 + gap, 0}};
 
   auto visualizer = nv::create_image_artist(image_artist_param);
   for (size_t icamera = 0; icamera < images.size(); ++icamera) {
@@ -148,7 +147,7 @@ std::shared_ptr<bevfusion::Core> create_core(const std::string& model, const std
   normalization.image_height = 400;
   normalization.output_width = 704;
   normalization.output_height = 256;
-  normalization.num_camera = 2;
+  normalization.num_camera = 1;
   normalization.resize_lim = 0.48f;
   normalization.interpolation = bevfusion::camera::Interpolation::Bilinear;
 
@@ -187,7 +186,7 @@ std::shared_ptr<bevfusion::Core> create_core(const std::string& model, const std
   geometry.image_height = 256;
   geometry.feat_width = 88;
   geometry.feat_height = 32;
-  geometry.num_camera = 2;
+  geometry.num_camera = 1;
   geometry.geometry_dim = nvtype::Int3(360, 360, 80);
 
   bevfusion::head::transbbox::TransBBoxParameter transbbox;
