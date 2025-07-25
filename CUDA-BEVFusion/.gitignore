@@ -6,6 +6,7 @@
 __pycache__
 *.plan
 *.log
+/model
 /example-data
 /src/test
 /qat/onnx_int8
