@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
-"""Extract a synchronized image and point cloud from an MCAP file.
+"""
+Extract a synchronized image and point cloud from an MCAP file.
 
 This helper loads the first messages on the given topics *after* the
 provided timestamp and saves them in the tensor format used by
 BEVFusion.  The output directory will contain ``points.tensor``,
 ``images.tensor`` and a ``0-image.jpg`` file.
+
+Timestamps must be provided in the form:
+    YYYY-MM-DD H:MM:SS.sss AM/PM PDT
+and will be converted to Unix seconds internally.
 """
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
 from io import BytesIO
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import numpy as np
 from PIL import Image
@@ -33,6 +40,20 @@ DTYPE_MAP = {
     8: np.float64,
 }
 
+def parse_pdt_timestamp(ts_str: str) -> float:
+    """Parse a timestamp like '2025-04-07 4:52:16.773 PM PDT'"""
+    # Strip trailing timezone label if present
+    ts_str = ts_str.strip()
+    # Expect literal 'PDT' at end
+    if not ts_str.endswith('PDT'):
+        raise ValueError(f"Timestamp must end with 'PDT': {ts_str}")
+    # Parse datetime without timezone
+    dt = datetime.strptime(ts_str, '%Y-%m-%d %I:%M:%S.%f %p PDT')
+    # Attach Pacific Time (UTC-7)
+    dt = dt.replace(tzinfo=ZoneInfo('America/Los_Angeles'))
+    # Convert to UTC and return seconds since epoch
+    return dt.astimezone(ZoneInfo('UTC')).timestamp()
+
 def pointcloud2_to_array(msg) -> np.ndarray:
     """Convert ``sensor_msgs/msg/PointCloud2`` to a structured array."""
     dtype = np.dtype({
@@ -48,14 +69,17 @@ def pointcloud2_to_array(msg) -> np.ndarray:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('bag', type=Path, help='Path to ROS2 bag directory or MCAP file')
-    parser.add_argument('--cam-topic', required=True)
-    parser.add_argument('--lidar-topic', required=True)
-    parser.add_argument('--timestamp', type=float, required=True,
-                        help='Unix timestamp (sec) to seek to')
-    parser.add_argument('-o', '--out-dir', type=Path, default=Path('custom-example'))
+    parser.add_argument('--cam-topic', required=True, help='Image topic name')
+    parser.add_argument('--lidar-topic', required=True, help='PointCloud2 topic name')
+    parser.add_argument('--timestamp', type=str, required=True,
+                        help='Timestamp in "YYYY-MM-DD H:MM:SS.sss AM/PM PDT" format')
+    parser.add_argument('-o', '--out-dir', type=Path, default=Path('custom-example'),
+                        help='Output directory')
     args = parser.parse_args()
 
-    ts_ns = int(args.timestamp * 1e9)
+    # Convert to nanoseconds
+    ts_secs = parse_pdt_timestamp(args.timestamp)
+    ts_ns = int(ts_secs * 1e9)
 
     # Open MCAP using rosbag2_py API
     reader = SequentialReader()
@@ -110,26 +134,17 @@ def main() -> None:
         arr = np.frombuffer(raw, dtype=np.uint8)
         h, w = cam_msg.height, cam_msg.width
         if enc == 'rgb8':
-            arr = arr.reshape((h, w, 3))
-            mode = 'RGB'
+            arr = arr.reshape((h, w, 3)); mode = 'RGB'
         elif enc == 'bgr8':
-            arr = arr.reshape((h, w, 3))
-            arr = arr[..., ::-1]
-            mode = 'RGB'
+            arr = arr.reshape((h, w, 3))[..., ::-1]; mode = 'RGB'
         elif enc == 'mono8':
-            arr = arr.reshape((h, w))
-            mode = 'L'
+            arr = arr.reshape((h, w)); mode = 'L'
         elif enc in ('mono16', '16uc1'):
-            arr = arr.view(np.uint16).reshape((h, w))
-            mode = 'I;16'
+            arr = arr.view(np.uint16).reshape((h, w)); mode = 'I;16'
         elif enc == 'bayer_rggb8':
-            # Demosaic Bayer RGGB8
             arr = arr.reshape((h, w))
-            # OpenCV expects single-channel image for demosaic
             arr_bgr = cv2.cvtColor(arr, cv2.COLOR_BAYER_RG2BGR)
-            mode = 'RGB'
-            # Convert BGR to RGB
-            arr = arr_bgr[..., ::-1]
+            arr = arr_bgr[..., ::-1]; mode = 'RGB'
         else:
             raise RuntimeError(f"Unsupported image encoding: {cam_msg.encoding}")
         img = Image.fromarray(arr, mode)
