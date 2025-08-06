@@ -1,26 +1,22 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: MIT
-#
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
+cmake_minimum_required(VERSION 3.18)
+# Enable CUDA as a first-class language
+project(bevfusion LANGUAGES C CXX CUDA)
 
-cmake_minimum_required(VERSION 3.14)
-project(bevfusion LANGUAGES C CXX)
+# ------------------------------------------------------------------
+# Disable CMake’s automatic CUDA .depend files to avoid copy errors
+set(CMAKE_CUDA_DEPENDENCY_GENERATION OFF CACHE BOOL "" FORCE)
+
+# Workaround: ensure the dependency-output folders exist before any
+# CUDA compile step runs (avoids the one-time race on a fresh build).
+file(MAKE_DIRECTORY
+  ${CMAKE_BINARY_DIR}/CMakeFiles/bevfusion.dir/src/common
+)
+# ------------------------------------------------------------------
+
+# Require that the CUDASM environment variable be set (e.g. "89" for RTX 4070)
+if(NOT DEFINED ENV{CUDASM})
+  message(FATAL_ERROR "Environment variable CUDASM not set. Please export CUDASM=<compute_cap> (e.g. 89 for an RTX 4070).")
+endif()
 
 # Dynamically fetch the stb library headers from GitHub
 include(FetchContent)
@@ -52,8 +48,12 @@ else()
   set(CMAKE_CXX_FLAGS_DEBUG   "-O0 -g -DENABLE_TEXT_BACKEND_STB")
 endif()
 
+# Configure NVCC to generate both PTX and real SM code for the target GPU
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}
+  # PTX fallback
   -gencode arch=compute_$ENV{CUDASM},code=compute_$ENV{CUDASM}
+  # Native SM code
+  -gencode arch=compute_$ENV{CUDASM},code=sm_$ENV{CUDASM}
 )
 
 # Global include paths
