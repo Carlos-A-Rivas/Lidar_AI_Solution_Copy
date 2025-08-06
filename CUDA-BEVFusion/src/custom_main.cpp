@@ -198,7 +198,7 @@ std::shared_ptr<bevfusion::Core> create_core(const std::string& model, const std
   transbbox.model = nv::format("model/%s/build/head.bbox.plan", model.c_str());
 
   // if you got an inaccurate boundingbox result please turn on the layernormplugin plan.
-  transbbox.model = nv::format("model/%s/build/head.bbox.layernormplugin.plan", model.c_str());
+  // transbbox.model = nv::format("model/%s/build/head.bbox.layernormplugin.plan", model.c_str());
   transbbox.confidence_threshold = 0.12f;
   transbbox.sorted_bboxes = true;
 
