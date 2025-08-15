@@ -1,72 +1,32 @@
-# CUDA-BEVFusion
+# Getting Lidar_AI_Solution_Copy up and running
 
-This repository contains sources and model for [BEVFusion](https://github.com/mit-han-lab/bevfusion) inference using CUDA & TensorRT.
-![title](/assets/bevfusion.png)
-
-
-## 3D Object Detection(on nuScenes validation set)
-- For all models, we used the [BEVFusion-Base](https://github.com/mit-han-lab/bevfusion/blob/main/configs/nuscenes/det/transfusion/secfpn/camera+lidar/swint_v0p075/convfuser.yaml) configuration.
-  - The camera resolution is 256x704
-- For the camera backbone, we chose SwinTiny and [ResNet50](configs/nuscenes/det/transfusion/secfpn/camera+lidar/resnet50/default.yaml).
-
-|         **Model**        | **Framework** | **Precision** | **mAP** | **NDS** | **FPS** |
-|:------------------------:|:-------------:|:-------------:|:-------:|:-------:|:----------------:|
-| Swin-Tiny <br/> BEVFusion-Base |    PyTorch    |   FP32+FP16   |  68.52  |  71.38  |         8.4(on RTX3090)        |
-|         ResNet50         |    PyTorch    |   FP32+FP16   |  67.93  |  70.97  |         -        |
-|         ResNet50         |    TensorRT   |      FP16     |  67.89  |  70.98  |        18(on ORIN)        |
-|         ResNet50-PTQ         |    TensorRT   |      FP16+INT8     |  67.66  |  70.81  |        25(on ORIN)        |
-- Note: The time we reported on ORIN is based on the average of nuScenes 6019 validation samples.
-  - Since the number of lidar points is the main reason that affects the FPS. 
-  - Please refer to the readme of [3DSparseConvolution](/libraries/3DSparseConvolution/README.md) for more details.
-
-## Demonstration
-![](../assets/cuda-bevfusion.gif)
-
-## Model and Data
-- For quick practice, we provide an example data of nuScenes. You can download it from ( [NVBox](https://nvidia.box.com/shared/static/g8vxxes3xj1288teyo4og87rn99brdf8) ) or ( [Baidu Drive](https://pan.baidu.com/s/1ED6eospSIF8oIQ2unU9WIQ?pwd=mtvt) ). It contains the following:
-  1. Camera images in 6 directions.
-  2. Transformation matrix of camera/lidar/ego.
-  3. Use for bevfusion-pytorch data of example-data.pth, allow export onnx only without depending on the full dataset.
-- All models (model.zip) can be downloaded from ( [NVBox](https://nvidia.box.com/shared/static/vc1ezra9kw7gu7wg3v8cwuiqshwr8b39) ) or ( [Baidu Drive](https://pan.baidu.com/s/1BiAoQ8L7nC45vEwkN3bSGQ?pwd=8jb6) ). It contains the following:
-  1. swin-tiny onnx models.
-  2. resnet50 onnx and pytorch models.
-  3. resnet50 int8 onnx and PTQ models.
-
-## Prerequisites
-To build bevfusion, we need to depend on the following libraries:
-- CUDA >= 11.0
-- CUDNN >= 8.2
-- TensorRT >= 8.5.0
-- libprotobuf-dev
-- [Compute Capability](https://developer.nvidia.com/cuda-gpus#compute) >= sm_80
-- Python >= 3.6
-
-The data in the performance table was obtained by us on the Nvidia Orin platform, using TensorRT-8.6, cuda-11.4 and cudnn8.6 statistics.
-
-## Quick Start for Inference
-- note: Please use `git clone --recursive` to pull this repository to ensure the integrity of the dependencies.
-
-### 1. Download models and datas to CUDA-BEVFusion directory
-- download model.zip from ( [NVBox](https://nvidia.box.com/shared/static/vc1ezra9kw7gu7wg3v8cwuiqshwr8b39) ) or ( [Baidu Drive](https://pan.baidu.com/s/1_6IJTzKlJ8H62W5cUPiSbA?pwd=g6b4) )
-- download nuScenes-example-data.zip from 
-( [NVBox](https://nvidia.box.com/shared/static/g8vxxes3xj1288teyo4og87rn99brdf8) ) or ( [Baidu Drive](https://pan.baidu.com/s/1ED6eospSIF8oIQ2unU9WIQ?pwd=mtvt) )
+Make sure you recursively clone the git repository:
 ```bash
-# download models and datas to CUDA-BEVFusion
-cd CUDA-BEVFusion
+git clone --recursive https://github.com/Carlos-A-Rivas/Lidar_AI_Solution_Copy.git
+```
 
-# unzip models and datas
+Download the models (all models will download from either of the provided links, but **NVBox is easier**):
+- [NVBox](https://nvidia.box.com/shared/static/vc1ezra9kw7gu7wg3v8cwuiqshwr8b39)
+- [Baidu Drive](https://pan.baidu.com/s/1BiAoQ8L7nC45vEwkN3bSGQ?pwd=8jb6)
+
+Insert the `model.zip` file in the following directory (and switch to the folder in CLI):
+```bash
+cd Lidar_AI_Solution_Copy/CUDA-BEVFusion/
+```
+Unzip:
+```bash
+sudo apt install unzip
 unzip model.zip
-unzip nuScenes-example-data.zip
-
-# here is the directory structure after unzipping
+rm ~/Lidar_AI_Solution_Copy/CUDA-BEVFusion/model.zip
+```
+The file tree should look like this:
+```bash
 CUDA-BEVFusion
-|-- example-data
-    |-- 0-FRONT.jpg
-    |-- 1-FRONT_RIGHT.jpg
+|-- custom-example
+    |-- 0-image.jpg
     |-- ...
     |-- camera_intrinsics.tensor
     |-- ...
-    |-- example-data.pth
     `-- points.tensor
 |-- src
 |-- qat
@@ -84,14 +44,18 @@ CUDA-BEVFusion
 |-- bevfusion
 `-- tool
 ```
-### 2. Configure the environment.sh
-- Install python dependency libraries
+
+Install python dependency libraries:
 ```bash
-apt install libprotobuf-dev
+sudo apt-get update
+sudo apt install libprotobuf-dev
+sudo apt install python3-pip
 pip install onnx
 ```
 
-- Modify the TensorRT/CUDA/CUDNN/BEVFusion variable values in the tool/environment.sh file.
+__The following steps assume you already have the proper TensorRT version installed.
+
+Modify the TEnsorRT/CUDA/CUDANN/BEVFusion variable values in the tool/environment.sh file
 ```bash
 # change the path to the directory you are currently using
 export TensorRT_Lib=/path/to/TensorRT/lib
@@ -107,63 +71,46 @@ export CUDNN_Lib=/path/to/cudnn/lib
 
 # For CUDA-11.x:    SPCONV_CUDA_VERSION=11.4
 # For CUDA-12.x:    SPCONV_CUDA_VERSION=12.6
-export SPCONV_CUDA_VERSION=11.4
+export SPCONV_CUDA_VERSION=12.8
 
 # resnet50/resnet50int8/swint
 export DEBUG_MODEL=resnet50int8
 
 # fp16/int8
 export DEBUG_PRECISION=int8
-export DEBUG_DATA=example-data
+export DEBUG_DATA=custom-example
 export USE_Python=OFF
 ```
 
-- Apply the environment to the current terminal.
+Apply the environment to the current terminal.
 ```bash
 . tool/environment.sh
 ```
 
-### 5. Compile and run
+## To Build the environment once everything else is setup:
 
 1. Building the models for tensorRT
 ```bash
-bash tool/build_trt_engine.sh
+bash tool/custom_build_trt_engine.sh
 ```
-
 2. Compile and run the program
 ```bash
 # Generate the protobuf code
 bash src/onnx/make_pb.sh
 
 # Compile and run
-bash tool/run.sh
+bash tool/custom_run.sh
 ```
-
-## Export onnx and PTQ
-- For more detail, please refer [here](qat/README.md)
 
 ## For Python Interface
-1. Modify `USE_Python=ON` in environment.sh to enable compilation of python.
-2. Run `bash tool/run.sh` to build the libpybev.so.
-3. Run `python tool/pybev.py` to test the python interface.
+1. Modify `USE_Python=ON` in custom_environment.sh to enable compilation of python.
+2. Run `bash tool/run.sh` to build the libpybev.so.
+3. Run `python tool/pybev.py` to test the python interface.
 
-## For PyTorch BEVFusion
-- Use the following command to get a specific commit to avoid failure.
-```bash
-git clone https://github.com/mit-han-lab/bevfusion
-
-cd bevfusion
-git checkout db75150717a9462cb60241e36ba28d65f6908607
-```
-
-## Further performance improvement
-- Since the number of point clouds fluctuates more, this has a significant impact on the FPS.
-  - Consider using the ground removal or range filter algorithms provided in [cuPCL](https://github.com/NVIDIA-AI-IOT/cuPCL), which can decrease the inference time by lidar.
-- We just implemented the recommended partial quantization method. However, users can further reduce the inference latency by sparse pruning and 4:2 sparsity.
-  - In the resnet50 model at large resolutions, using the --sparsity=force option can significantly improve inference performance. For more details, please refer to [ASP](https://github.com/NVIDIA/apex/tree/master/apex/contrib/sparsity) (automatic sparsity tools).
-- In general, the camera backbone has less impact on accuracy and more impact on latency.
-  - A lighter camera backbone (such as resnet34) will achieve lower latency.
-
-## References
-- [BEVFusion: Multi-Task Multi-Sensor Fusion with Unified Bird's-Eye View Representation](https://arxiv.org/abs/2205.13542)
-- [BEVFusion Repository](https://github.com/mit-han-lab/bevfusion)
+## OTHER TIPS:
+- If trying to accomplish things other than what is mentioned in my custom readme, [reference the original readme](https://github.com/Carlos-A-Rivas/Lidar_AI_Solution_Copy/tree/main/CUDA-BEVFusion)
+- The repo is setup with the python interface off, but I think turning it on and using `custom_pybev.py` might be the key to getting proper results.
+- Look through `make_custom_tensors.py` and `make_custom_tesnors2.py` to sanity check and make sure I entered the matrices correctly. I have been using `make_custom_tensors.py` as the primary file, and `make_custome_tensors2.py` to just test different things.
+- I have been working out of the `tool` and `src` folders, but I realized there is a Dockerfile in `~/Lidar_AI_Solution_Copy/CUDA-BEVFusion/bevfusion/docker`; I can't believe I missed this 🤦. This looks like a good spot to poke around, along with `~/Lidar_AI_Solution_Copy/CUDA-BEVFusion/bevfusion/tools`. 
+- The `CMakeLists.txt` file in the `~/Lidar_AI_Solution_Copy/CUDA-BEVFusion` folder HAS BEEN EDITED. The original `CMakeLists.txt` file can be found in the original Lidar_AI_Solution repo, and may need to be substituted to get docker to work (I do not know though).
+- Do not hesitate to reach out via carivas007@gmail.com after my Caltech email/slack expires with questions! (My Caltech email should be valid for the next couple months.)
